@@ -1,11 +1,16 @@
 import { cn } from "@/lib/utils"
-import { Search } from "lucide-react"
+import { Bell, Search } from "lucide-react"
 import Link from "next/link"
 import { Input } from "../ui/input"
-import { buttonVariants } from "../ui/button"
+import { Button, buttonVariants } from "../ui/button"
+import { SignedIn, SignedOut, UserAvatar, UserButton } from "@neondatabase/auth/react"
+import { User } from "@/lib/types"
 
+interface NavbarProps {
+  user: User | null
+}
 
-const Navbar = () => {
+const Navbar = ({ user }: NavbarProps) => {
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background/90 bacdrop-blur-md">
       <div className="mx-auto flex h-14 max-w-[1200px] items-center gap-4 px-4">
@@ -27,21 +32,57 @@ const Navbar = () => {
           />
         </div>
 
-        <div className="ml-auto flex items-center gap-2">
+        <SignedIn>
           <Link
-            href="/auth/sign-in"
-            className={cn(buttonVariants({ variant: "ghost", size: "default" }))}
+            href="/submit"
+            className={cn(
+              buttonVariants({ variant: "outline", size: "sm" }),
+              "hidden sm:inline-flex"
+            )}
           >
-            Log In
+            Create
           </Link>
 
-          <Link
-            href="/auth/sign-up"
-            className={cn(buttonVariants({ variant: "default" }))}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-muted-foreground"
+            aria-label="notifications"
           >
-            Sign Up
-          </Link>
-        </div>
+            <Bell className="size-5" />
+          </Button>
+
+          <UserButton
+            size="icon"
+            classNames={{
+              trigger: {
+                avatar: {
+                  base: "bg-primary",
+                  fallback: "bg-primary text-white",
+                  fallbackIcon: "text-white"
+                }
+              }
+            }}
+          />
+        </SignedIn>
+
+        <SignedOut>
+          <div className="ml-auto flex items-center gap-2">
+            <Link
+              href="/auth/sign-in"
+              className={cn(buttonVariants({ variant: "ghost", size: "default" }))}
+            >
+              Log In
+            </Link>
+
+            <Link
+              href="/auth/sign-up"
+              className={cn(buttonVariants({ variant: "default" }))}
+            >
+              Sign Up
+            </Link>
+          </div>
+        </SignedOut>
       </div>
     </header>
   )

@@ -10,7 +10,7 @@ const CoreGroupLayout = async ({ children }: { children: React.ReactNode }) => {
 
   return (
     <>
-      <Navbar />
+      <Navbar user={user} />
       <div className="mx-auto flex max-w-[1200px] gap-8 px-4 pb-16 pt-2">
         <LeftSidebar />
         <div className='min-w-0 flex-1'>
