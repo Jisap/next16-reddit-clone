@@ -6,11 +6,8 @@ import { Button, buttonVariants } from "../ui/button"
 import { SignedIn, SignedOut, UserAvatar, UserButton } from "@neondatabase/auth/react"
 import { User } from "@/lib/types"
 
-interface NavbarProps {
-  user: User | null
-}
 
-const Navbar = ({ user }: NavbarProps) => {
+const Navbar = () => {
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background/90 bacdrop-blur-md">
       <div className="mx-auto flex h-14 max-w-[1200px] items-center gap-4 px-4">
