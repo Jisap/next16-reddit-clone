@@ -4,6 +4,8 @@ import { cn } from "@/lib/utils"
 import { Flame, Home, LayoutGrid } from "lucide-react"
 import Link from "next/link"
 import { usePathname, useSearchParams } from "next/navigation"
+import LeftTags from "./left-tags"
+import JoinCtaCard from "./join-cta-card"
 
 const nav = [
   { href: "/", label: "Home", icon: Home, match: "home" as const },
@@ -24,8 +26,8 @@ const LeftSidebar = ({ showCta }: { showCta: boolean }) => {
   const sort = searchParams.get("sort")
 
   return (
-    <aside>
-      <nav>
+    <aside className="hidden w-52 shrink-0 lg:block">
+      <nav className="space-y-1 pr-2">
         {nav.map(({ href, label, icon: Icon, match }) => {
           const active = isActive(match, pathname, sort)
           return (
@@ -48,10 +50,16 @@ const LeftSidebar = ({ showCta }: { showCta: boolean }) => {
         })}
       </nav>
 
-      <div>
-        <p>Top Tags</p>
-        {/* <LeftTags /> */}
+      <div className="mt-8">
+        <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Top Tags</p>
+        <LeftTags />
       </div>
+
+      {showCta && (
+        <div className="mt-8">
+          <JoinCtaCard />
+        </div>
+      )}
     </aside>
   )
 }
