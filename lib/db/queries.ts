@@ -15,52 +15,52 @@ export async function listPostsSorted(
 ) {
 
   const where = tagFilter
-    ? { postTags: { some: { tagSlug: tagFilter.toLowerCase() } } }
+    ? { postTags: { some: { tagSlug: tagFilter.toLowerCase() } } }     // Filtro: Se busca en postTags si el tagSlug contiene el tagFilter
     : undefined
 
-  const postRows = await prisma.post.findMany({
+  const postRows = await prisma.post.findMany({                        // Se obtienen todos los posts de acuerdo con el filtro "where"
     where,
     orderBy: { createdAt: 'desc' },
     take: 50
   })
 
-  const ids = postRows.map(p => p.id);
-  if (ids.length === 0) return [];
+  const ids = postRows.map(p => p.id);                                 // Se obtiene el ID de cada post.
+  if (ids.length === 0) return [];                                     // Si no hay IDs de posts, se devuelve el mapa vacío.
 
-  const [tagMap] = await Promise.all([tagsForPosts(ids)]);
+  const [tagMap] = await Promise.all([tagsForPosts(ids)]);             // Se obtienen todos los tags de los posts. <string, string[]>
 
-  const mapped = postRows.map((row) => {
+  const mapped = postRows.map((row) => {                               // Se obtienen los tags <string[]> de cada post
     const slugs = tagMap.get(row.id) ?? [];
     return {
-      post: mapPostRow(
+      post: mapPostRow(                                                // Se transforma el post con sus tags y el número de comentarios
         row,
         slugs,
         65
       ),
-      voteScore: 2,
-      created: row.createdAt.getTime(),
-      userVote: 1,
+      voteScore: 2,                                                    // Se establece un voto inicial de 2
+      created: row.createdAt.getTime(),                                // Se obtiene la fecha de creación del post
+      userVote: 1,                                                     // Se establece el voto del usuario en 1
     }
   });
 
-  if (sort === "new") {
+  if (sort === "new") {                                                // Se ordena por fecha
     mapped.sort((a, b) => b.created - a.created)
-  } else if (sort === "top") {
+  } else if (sort === "top") {                                         // Se ordena por votos y comentarios
     mapped.sort(
       (a, b) =>
         b.voteScore - a.voteScore ||
         b.post.commentCount - a.post.commentCount ||
         b.created - a.created
     )
-  } else {
+  } else {                                                             // Se ordena por "hot", es decir, por votos y comentarios con una fórmula exponencial
     mapped.sort((a, b) => {
-      const hotB = b.voteScore + 2 * b.post.commentCount;
-      const hotA = a.voteScore + 2 * a.post.commentCount;
-      return hotB - hotA || b.created - a.created
+      const hotB = b.voteScore + 2 * b.post.commentCount;              // Se obtiene el puntaje hot del post b
+      const hotA = a.voteScore + 2 * a.post.commentCount;              // Se obtiene el puntaje hot del post a
+      return hotB - hotA || b.created - a.created                      // Se ordena por puntaje hot y luego por fecha
     })
   }
 
-  return mapped.map((x) => ({
+  return mapped.map((x) => ({                                          // Se transforma el resultado en un array de objetos {post, score, userVote}
     post: x.post,
     score: x.voteScore,
     userVote: x.userVote
