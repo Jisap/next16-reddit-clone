@@ -8,26 +8,35 @@ export type FeedPostRow = {
   userVote: -1 | 0 | 1;
 }
 
+/**
+ * 
+ * @param authorIds Array de id's únicos de los autores de los posts
+ * @returns Map<string, User> - Un mapa que asocia cada ID de post con su autor.
+ * 
+ * Su objetivo es, dado un listado de IDs de posts (authorIds), 
+ * buscar todos los autores asociados a esos posts y devolverlos de forma organizada
+ */
+
 export async function batchAuthorForIds(
   authorIds: string[]                                                 // id's únicos de los autores de los posts
 ): Promise<Map<string, User>> {
 
   const unique = [...new Set(authorIds)];                             // Se eliminan los duplicados
-  if (unique.length === 0) return new Map();                           // Si no hay IDs de posts, se devuelve el mapa vacío.
+  if (unique.length === 0) return new Map();                          // Si no hay IDs de posts, se devuelve el mapa vacío.
 
   const rows = await prisma.userProfile.findMany({                    // Se obtienen todos los registros de la tabla userProfile
-    where: { id: { in: unique } }                                         // por su ID.
+    where: { id: { in: unique } }                                     // por su ID.
   })
 
   const result = new Map<string, User>();                             // Se inicializa un Map vacio "result" para almacenar los autores.
 
-  for (const row of rows) {                                            // Se recorren todos los registros de la tabla userProfile
-    result.set(row.id, { id: row.id, username: row.username })        // Se añade el autor al mapa "result" {id: "id", username: "username"}
+  for (const row of rows) {                                           // Se recorren todos los registros de la tabla userProfile
+    result.set(row.id, { id: row.id, username: row.username })        // Se añade el autor al mapa "result" junto con el id del post {id: "id", username: "username"}
   }
 
   for (const id of unique) {                                           // Se recorren todos los IDs de los posts.
-    if (!result.has(id)) {                                              // Si el ID no existe en el mapa "result",
-      result.set(id, { id, username: `user_${id.slice(0, 6)}` })        // se añade el autor al mapa "result" con un nombre de usuario generado aleatoriamente.
+    if (!result.has(id)) {                                             // Si el ID no existe en el mapa "result",
+      result.set(id, { id, username: `user_${id.slice(0, 6)}` })       // se añade el autor al mapa "result" con un nombre de usuario generado aleatoriamente.
     }
   }
 
@@ -38,7 +47,7 @@ export async function listPostsSorted(
   sort: FeedSort,
   tagFilter: string | undefined,
   userId: string | undefined
-) {
+): Promise<FeedPostRow[]> {
 
   const where = tagFilter
     ? { postTags: { some: { tagSlug: tagFilter.toLowerCase() } } }     // Filtro: Se busca en postTags si el tagSlug contiene el tagFilter
@@ -89,7 +98,7 @@ export async function listPostsSorted(
   return mapped.map((x) => ({                                          // Se transforma el resultado en un array de objetos {post, score, userVote}
     post: x.post,
     score: x.voteScore,
-    userVote: x.userVote
+    userVote: x.userVote as -1 | 0 | 1
   }))
 }
 
