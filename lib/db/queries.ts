@@ -1,11 +1,37 @@
 import { PostModel } from "../generated/prisma/models";
 import { prisma } from "../prisma";
-import { FeedSort, Post } from "../types";
+import { FeedSort, Post, User } from "../types";
 
 export type FeedPostRow = {
   post: Post;
   score: number;
   userVote: -1 | 0 | 1;
+}
+
+export async function batchAuthorForIds(
+  authorIds: string[]                                                 // id's únicos de los autores de los posts
+): Promise<Map<string, User>> {
+
+  const unique = [...new Set(authorIds)];                             // Se eliminan los duplicados
+  if (unique.length === 0) return new Map();                           // Si no hay IDs de posts, se devuelve el mapa vacío.
+
+  const rows = await prisma.userProfile.findMany({                    // Se obtienen todos los registros de la tabla userProfile
+    where: { id: { in: unique } }                                         // por su ID.
+  })
+
+  const result = new Map<string, User>();                             // Se inicializa un Map vacio "result" para almacenar los autores.
+
+  for (const row of rows) {                                            // Se recorren todos los registros de la tabla userProfile
+    result.set(row.id, { id: row.id, username: row.username })        // Se añade el autor al mapa "result" {id: "id", username: "username"}
+  }
+
+  for (const id of unique) {                                           // Se recorren todos los IDs de los posts.
+    if (!result.has(id)) {                                              // Si el ID no existe en el mapa "result",
+      result.set(id, { id, username: `user_${id.slice(0, 6)}` })        // se añade el autor al mapa "result" con un nombre de usuario generado aleatoriamente.
+    }
+  }
+
+  return result;
 }
 
 export async function listPostsSorted(
@@ -111,3 +137,5 @@ async function tagsForPosts(postIds: string[]): Promise<Map<string, string[]>> {
   }
   return m;
 }
+
+
