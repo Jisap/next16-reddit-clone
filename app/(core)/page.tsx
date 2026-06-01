@@ -29,7 +29,7 @@ export default async function Home({
 
   const authorIds = [...new Set(rows.map((r) => r.post.authorId))];    // IDs únicos de los autores de los posts
   const authorById = await batchAuthorForIds(authorIds);               // Array con los ids de los post y sus autores
-  if (sessionUser && authorById.has(sessionUser.id)) {                   // Si el usuario logueado es un autor de un post
+  if (sessionUser && authorById.has(sessionUser.id)) {                 // Si el usuario logueado es un autor de un post
     authorById.set(sessionUser.id, sessionUser)                        // Se añade el autor al mapa "result"
   }
 
@@ -54,6 +54,7 @@ export default async function Home({
       <div>
         <FeedSortTabs />
         <div>
+          {cards}
           {rows.length === 0 && (
             <p className="rounded-xl border border-border bg-card p-8 text-center text-sm text-muted-foreground">
               No posts match this filter
