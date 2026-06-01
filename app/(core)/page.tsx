@@ -50,10 +50,10 @@ export default async function Home({
   })
 
   return (
-    <div>
-      <div>
+    <div className="flex gap-8">
+      <div className="min-w-0 flex-1">
         <FeedSortTabs />
-        <div>
+        <div className="space-y-4">
           {cards}
           {rows.length === 0 && (
             <p className="rounded-xl border border-border bg-card p-8 text-center text-sm text-muted-foreground">
