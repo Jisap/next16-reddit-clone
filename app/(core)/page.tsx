@@ -1,7 +1,7 @@
 import FeedSortTabs from "@/components/Feed/feed-sort-tabs";
 import PostCard from "@/components/Feed/post-card";
 import { getSessionUser } from "@/lib/auth";
-import { batchAuthorForIds, listPostsSorted } from "@/lib/db/queries";
+import { batchAuthorForIds, listPostsSorted, listTags } from "@/lib/db/queries";
 import { FeedSort, Tag } from "@/lib/types";
 import { redirect } from "next/navigation";
 
@@ -25,6 +25,9 @@ export default async function Home({
     redirect('/sign-in');
   }
 
+  const tags = await listTags();                                       // Tags ordenados por slug.
+  const tagMap = new Map<string, Tag>(tags.map((t) => [t.slug, t]));   // Mapa con los tags ordenados por slug.
+
   const rows = await listPostsSorted(sort, tagFilter, sessionUser.id)  // posts ordenados por votos y comentarios
 
   const authorIds = [...new Set(rows.map((r) => r.post.authorId))];    // IDs únicos de los autores de los posts
@@ -43,7 +46,7 @@ export default async function Home({
       key={row.post.id}
       post={row.post}
       author={author}
-      tagsBySlug={new Map<string, Tag>()}
+      tagsBySlug={tagMap}
       score={row.score}
       userVote={row.userVote}
     />
@@ -52,7 +55,10 @@ export default async function Home({
   return (
     <div className="flex gap-8">
       <div className="min-w-0 flex-1">
-        <FeedSortTabs />
+        <FeedSortTabs
+          current={sort}
+          tag={tagFilter}
+        />
         <div className="space-y-4">
           {cards}
           {rows.length === 0 && (

@@ -1,6 +1,6 @@
 import { PostModel } from "../generated/prisma/models";
 import { prisma } from "../prisma";
-import { FeedSort, Post, User } from "../types";
+import { FeedSort, Post, Tag, User } from "../types";
 
 export type FeedPostRow = {
   post: Post;
@@ -145,6 +145,15 @@ async function tagsForPosts(postIds: string[]): Promise<Map<string, string[]>> {
     }
   }
   return m;
+}
+
+export async function listTags(): Promise<Tag[]> {
+  const rows = await prisma.tag.findMany({ orderBy: { slug: "asc" } });  // Se obtienen todos los registros de la tabla tag ordenados por slug.
+  return rows.map((t) => ({                                             // Se transforma cada registro en un objeto Tag
+    slug: t.slug,
+    label: t.label,
+    hashColor: t.hashColor
+  }))
 }
 
 
