@@ -194,24 +194,24 @@ export async function listPostsSorted(
     }
   });
 
-  if (sort === "new") {                                                // Se ordena por fecha
+  if (sort === "new") {                                                 // Se ordena por fecha
     mapped.sort((a, b) => b.created - a.created)
-  } else if (sort === "top") {                                         // Se ordena por votos y comentarios
+  } else if (sort === "top") {                                          // Se ordena por votos y comentarios
     mapped.sort(
       (a, b) =>
         b.voteScore - a.voteScore ||
         b.post.commentCount - a.post.commentCount ||
         b.created - a.created
     )
-  } else {                                                             // Se ordena por "hot", es decir, por votos y comentarios con una fórmula exponencial
+  } else {                                                              // Se ordena por "hot", es decir, por votos y comentarios con una fórmula exponencial
     mapped.sort((a, b) => {
-      const hotB = b.voteScore + 2 * b.post.commentCount;              // Se obtiene el puntaje hot del post b
-      const hotA = a.voteScore + 2 * a.post.commentCount;              // Se obtiene el puntaje hot del post a
-      return hotB - hotA || b.created - a.created                      // Se ordena por puntaje hot y luego por fecha
+      const hotB = b.voteScore + 2 * b.post.commentCount;               // Se obtiene el puntaje hot del post b
+      const hotA = a.voteScore + 2 * a.post.commentCount;               // Se obtiene el puntaje hot del post a
+      return hotB - hotA || b.created - a.created                       // Se ordena por puntaje hot y luego por fecha
     })
   }
 
-  return mapped.map((x) => ({                                          // Se transforma el resultado en un array de objetos {post, score, userVote}
+  return mapped.map((x) => ({                                           // Se transforma el resultado en un array de objetos {post, score, userVote}
     post: x.post,
     score: x.voteScore,
     userVote: x.userVote as -1 | 0 | 1
