@@ -215,6 +215,8 @@ async function main() {
 
   if (existing > 0 && force) {
     console.log("SEED_FORCE: removing posts, comments, votes...");
+    await prisma.vote.deleteMany();
+    await prisma.comment.deleteMany();
     await prisma.postTag.deleteMany();
     await prisma.post.deleteMany();
   }
