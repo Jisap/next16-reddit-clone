@@ -86,10 +86,10 @@ async function voteSumsForPosts(
 ): Promise<Map<string, number>> {
   if (postIds.length === 0) return new Map();
 
-  // Agrupa votos por targetId, filtrando solo los de tipo "post",
-  // y suma el campo `value` de cada grupo en una sola query.
-  const rows = await prisma.vote.groupBy({
-    by: ["targetId"],
+
+
+  const rows = await prisma.vote.groupBy({                    // Agrupa votos por targetId, filtrando solo los de tipo "post",
+    by: ["targetId"],                                         // y suma el campo `value` de cada grupo en una sola query.
     where: {
       targetType: "post",
       targetId: { in: postIds },
@@ -98,10 +98,8 @@ async function voteSumsForPosts(
   });
 
   const m = new Map<string, number>();
-  for (const r of rows) {
-    // `r._sum.value` puede ser null (post sin votos) o Decimal
-    // según el provider de Prisma; lo normalizamos a number.
-    m.set(r.targetId, Number(r._sum.value ?? 0));
+  for (const r of rows) {                                    // Se recorren todos los registros de la tabla vote y se realiza la suma de los votos.
+    m.set(r.targetId, Number(r._sum.value ?? 0));            // `r._sum.value` puede ser null (post sin votos) o Decimal, según el provider de Prisma; lo normalizamos a number.
   }
 
   return m;
@@ -127,25 +125,20 @@ async function userVotesForPosts(
 ): Promise<Map<string, -1 | 0 | 1>> {
   const m = new Map<string, -1 | 0 | 1>();
 
-  // Sin usuario o sin posts: no hay nada que buscar.
-  if (!userId || postIds.length === 0) return m;
 
-  // Trae los votos del usuario sobre los posts indicados.
-  // findMany (no groupBy) porque queremos las filas individuales,
-  // no una agregación: el voto es único por (userId, targetId).
-  const rows = await prisma.vote.findMany({
-    where: {
-      userId,
+  if (!userId || postIds.length === 0) return m;                   // Sin usuario o sin posts: no hay nada que buscar.
+
+  const rows = await prisma.vote.findMany({                        // Trae los votos del usuario sobre los posts indicados.
+    where: {                                                       // findMany (no groupBy) porque queremos las filas individuales,
+      userId,                                                      // no una agregación: el voto es único por (userId, targetId).
       targetType: "post",
       targetId: { in: postIds },
     },
   });
 
-  for (const r of rows) {
-    // Defensivo: si en BD hay un valor raro (ej. 2, -5, null),
-    // lo tratamos como 0 para que el tipo de retorno sea válido.
-    const v = r.value;
-    m.set(r.targetId, v === -1 || v === 1 ? v : 0);
+  for (const r of rows) {                                          // Recorremos los votos del usuario sobre los posts.
+    const v = r.value;                                             // Obtenemos el valor del voto del usuario.
+    m.set(r.targetId, v === -1 || v === 1 ? v : 0);                // Defensivo: si en BD hay un valor raro (ej. 2, -5, null), lo tratamos como 0 para que el tipo de retorno sea válido.
   }
 
   return m;
@@ -218,8 +211,6 @@ export async function listPostsSorted(
   }))
 }
 
-
-
 function mapPostRow(
   row: PostModel,
   tagSlugs: string[],
@@ -245,7 +236,10 @@ function mapPostRow(
  * buscar todos los tags asociados a esos posts y devolverlos de forma organizada
  */
 
-async function tagsForPosts(postIds: string[]): Promise<Map<string, string[]>> {
+async function tagsForPosts(
+  postIds: string[]
+): Promise<Map<string, string[]>> {
+
   const m = new Map<string, string[]>();            // Se inicializa un Map vacio para almacenar los tags.
   if (postIds.length === 0) return m;               // Si no hay IDs de posts, se devuelve el mapa vacío.
 
