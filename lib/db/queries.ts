@@ -1,6 +1,6 @@
 import { PostModel } from "../generated/prisma/models";
 import { prisma } from "../prisma";
-import { FeedSort, Post, Tag, User } from "../types";
+import { FeedSort, Post, Tag, User, VoteTarget } from "../types";
 
 export type FeedPostRow = {
   post: Post;
@@ -272,6 +272,28 @@ export async function listTags(): Promise<Tag[]> {
     label: t.label,
     hashColor: t.hashColor
   }))
+}
+
+export async function getUserVote(
+  userId: string | undefined,
+  type: VoteTarget,
+  targetId: string,
+): Promise<-1 | 0 | 1> {
+  if (!userId) return 0;
+
+  const row = await prisma.vote.findUnique({
+    where: {
+      userId_targetType_targetId: {
+        userId,
+        targetType: type,
+        targetId,
+      },
+    },
+  });
+
+  const v = row?.value;
+
+  return v === -1 || v === 1 ? v : 0;
 }
 
 
