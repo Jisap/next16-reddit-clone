@@ -240,28 +240,28 @@ async function tagsForPosts(
   postIds: string[]
 ): Promise<Map<string, string[]>> {
 
-  const m = new Map<string, string[]>();            // Se inicializa un Map vacio para almacenar los tags.
-  if (postIds.length === 0) return m;               // Si no hay IDs de posts, se devuelve el mapa vacío.
+  const m = new Map<string, string[]>();                                    // Se inicializa un Map vacio para almacenar los tags.
+  if (postIds.length === 0) return m;                                       // Si no hay IDs de posts, se devuelve el mapa vacío.
 
-  const rows = await prisma.postTag.findMany({      // Se obtienen todos los registros de la tabla post_tags (combinación postId + tagSlug)
-    where: { postId: { in: postIds } }              // que correspondan a los IDs de posts proporcionados.
+  const rows = await prisma.postTag.findMany({                              // Se obtienen todos los registros de la tabla post_tags (combinación postId + tagSlug)
+    where: { postId: { in: postIds } }                                      // que correspondan a los IDs de posts proporcionados.
   })
 
-  for (const pid of postIds) m.set(pid, []);        // Se inicializa una entrada en el mapa m, para cada ID de post { "post1" => [], "post2" => [], "post3" => []}.
+  for (const pid of postIds) m.set(pid, []);                                // Se inicializa una entrada en el mapa m, para cada ID de post { "post1" => [], "post2" => [], "post3" => []}.
 
-  for (const r of rows) {                           // Se recorren todos los registros r, obtenidos de postTag.
-    const list = m.get(r.postId);                   // Para cada r se obtiene el array vacio de tags.
-    if (list) {                                     // Si existe el array de tags,
-      list.push(r.tagSlug);                         // se añade el tag actual al array.
-      m.set(r.postId, list);                        // y se actualiza el mapa.
+  for (const r of rows) {                                                   // Se recorren todos los registros r, obtenidos de postTag.
+    const list = m.get(r.postId);                                           // Para cada r se obtiene el array vacio de tags.
+    if (list) {                                                             // Si existe el array de tags,
+      list.push(r.tagSlug);                                                 // se añade el tag actual al array.
+      m.set(r.postId, list);                                                // y se actualiza el mapa.
     }
   }
   return m;
 }
 
 export async function listTags(): Promise<Tag[]> {
-  const rows = await prisma.tag.findMany({ orderBy: { slug: "asc" } });  // Se obtienen todos los registros de la tabla tag ordenados por slug.
-  return rows.map((t) => ({                                             // Se transforma cada registro en un objeto Tag
+  const rows = await prisma.tag.findMany({ orderBy: { slug: "asc" } });     // Se obtienen todos los registros de la tabla tag ordenados por slug.
+  return rows.map((t) => ({                                                 // Se transforma cada registro en un objeto Tag
     slug: t.slug,
     label: t.label,
     hashColor: t.hashColor
@@ -273,21 +273,44 @@ export async function getUserVote(
   type: VoteTarget,
   targetId: string,
 ): Promise<-1 | 0 | 1> {
-  if (!userId) return 0;
+  if (!userId) return 0;                                                      // Si no hay userId, se devuelve 0.
 
-  const row = await prisma.vote.findUnique({
-    where: {
-      userId_targetType_targetId: {
-        userId,
-        targetType: type,
-        targetId,
+  const row = await prisma.vote.findUnique({                                  // Se obtiene el voto del usuario dependiendo de 
+    where: {                                                                  // la condición de búsqueda.
+      userId_targetType_targetId: {                                           // la clave compuesta para buscar el voto.
+        userId,                                                               // el id del usuario.
+        targetType: type,                                                     // el tipo de voto.
+        targetId,                                                             // el id del objetivo.
       },
     },
   });
 
-  const v = row?.value;
+  const v = row?.value;                                                       // Se obtiene el valor del voto.
 
-  return v === -1 || v === 1 ? v : 0;
+  return v === -1 || v === 1 ? v : 0;                                         // Se devuelve el valor del voto.
 }
 
+export async function getPostById(id: string): Promise<Post | undefined> {
+  const row = await prisma.post.findUnique({ where: { id } });                // Se obtiene el post por su id.
+  if (!row) return undefined;                                                 // Si no se encuentra el post, se devuelve undefined.
+
+  const [tagMap, ccMap] = await Promise.all([
+    tagsForPosts([id]),                                                       // Se obtienen los tags del post.
+    commentCountsForPosts([id]),                                              // Se obtienen el numero de comentarios del post.
+  ]);
+
+  return mapPostRow(                                                          // Se mapea el post a un objeto Post.
+    row,                                                                      // Se obtiene el post.
+    tagMap.get(id) ?? [],                                                     // Se obtiene el tag del post.
+    ccMap.get(id) ?? 0);                                                      // Se obtiene el numero de comentarios del post.
+}
+
+export async function getAuthorById(authorId: string): Promise<User> {
+  const row = await prisma.userProfile.findUnique(                            // Se obtiene el perfil del usuario desde la tabla userProfile
+    { where: { id: authorId } }                                               // Se busca por el id del autor.
+  );
+  return row
+    ? { id: row.id, username: row.username }                                  // Si se encuentra el perfil del usuario, se devuelve el objeto User.
+    : { id: authorId, username: `user_${authorId.slice(0, 6)}` };             // Si no se encuentra el perfil del usuario, se devuelve un objeto User con el id del autor y un nombre de usuario generado aleatoriamente.
+}
 
