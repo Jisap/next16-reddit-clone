@@ -1,4 +1,5 @@
 import { VoteButtons } from '@/components/Feed/vote-buttons';
+import { CommentComposer } from '@/components/post/comment-composer';
 import { Separator } from '@/components/ui/separator';
 import { getSessionUser } from '@/lib/auth';
 import { getAuthorById, getCommentTree, getPostById, getPostScore, getUserVote, listTags } from '@/lib/db/queries';
@@ -110,8 +111,7 @@ const PostPage = async ({
           </div>
           {sessionUser ? (
             <div className="mb-8">
-              {/* <CommentComposer postId={post.id} user={sessionUser} /> */}
-              CommentComposer
+              <CommentComposer postId={post.id} user={sessionUser} />
             </div>
           ) : (
             <p className="mb-8 rounded-lg border border-dashed border-border bg-muted/30 p-4 text-sm text-muted-foreground">
