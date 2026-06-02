@@ -1,5 +1,9 @@
 import { getSessionUser } from '@/lib/auth';
 import { getAuthorById, getPostById } from '@/lib/db/queries';
+import { formatRelativeTime } from '@/lib/format';
+import { UserAvatar } from '@neondatabase/auth/react';
+import { ArrowLeft } from 'lucide-react';
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import React from 'react'
 
@@ -16,8 +20,33 @@ const PostPage = async ({
   const author = await getAuthorById(post.authorId);
   const sessionUser = await getSessionUser();
 
+
+
   return (
-    <div>page</div>
+    <div className='flex gap-8'>
+      <div className='min-w-0 flex-1'>
+        <Link
+          href="/"
+          className='mb-4 inline-flex items-center gap-2 text-sm text-muted-foreground transition-color hover:text-foreground'
+        >
+          <ArrowLeft className='size-4' />
+          Back to Feed
+        </Link>
+
+        <article className="rounded-xl border border-border bg-card p-4 md:p-6">
+          <div className="mb-4 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+            <UserAvatar user={author} size="sm" />
+            <span className="font-medium text-foreground">u/ {author.username}</span>
+            <span>·</span>
+            <span>{formatRelativeTime(post.createdAt)}</span>
+          </div>
+
+          <h1 className="text-balance text-2xl font-bold leading-tight text-foreground md:text-3xl">
+            {post.title}
+          </h1>
+        </article>
+      </div>
+    </div>
   )
 }
 
