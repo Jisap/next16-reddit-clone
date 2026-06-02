@@ -44,15 +44,43 @@ export function VoteButtons({
     : "min-w-[1.5ch] text-center font-medium tabular-nums";
 
   return (
-    <div>
-      <button onClick={() => vote(1)}>
-        <ChevronUp />
+    <div className={stackClass}>
+      <button
+        onClick={() => vote(1)}
+        disabled={pending}
+        className={cn(
+          "rounded p-0.5 transition-colors hover:bg-muted disabled:opacity-50",
+          userVote === 1
+            ? "text-upvote"
+            : "text-muted-foreground hover:text-upvote",
+        )}
+        aria-label={isPost ? "Upvote" : "Upvote comment"}
+      >
+        <ChevronUp className={iconClass} />
       </button>
 
-      <span>{score}</span>
+      <span
+        className={cn(
+          scoreClass,
+          userVote === 1 && "text-upvote",
+          userVote === -1 && "text-downvote",
+        )}
+      >
+        {score}
+      </span>
 
-      <button onClick={() => vote(-1)}>
-        <ChevronDown />
+      <button
+        onClick={() => vote(-1)}
+        disabled={pending}
+        className={cn(
+          "rounded p-0.5 transition-colors hover:bg-muted disabled:opacity-50",
+          userVote === -1
+            ? "text-downvote"
+            : "text-muted-foreground hover:text-downvote",
+        )}
+        aria-label={isPost ? "Downvote" : "Downvote comment"}
+      >
+        <ChevronDown className={iconClass} />
       </button>
     </div>
   );
