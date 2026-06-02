@@ -1,7 +1,9 @@
 import FeedSortTabs from "@/components/Feed/feed-sort-tabs";
 import PostCard from "@/components/Feed/post-card";
+import { RightTrending } from "@/components/layout/right-tending";
 import { getSessionUser } from "@/lib/auth";
 import { batchAuthorForIds, listPostsSorted, listTags } from "@/lib/db/queries";
+import { getTrendingToday } from "@/lib/trending";
 import { FeedSort, Tag } from "@/lib/types";
 import { redirect } from "next/navigation";
 
@@ -36,6 +38,8 @@ export default async function Home({
     authorById.set(sessionUser.id, sessionUser)                        // Se añade el autor al mapa "result"
   }
 
+  const trending = getTrendingToday();
+
   const cards = rows.map((row) => {
     const author = authorById.get(row.post.authorId)
     if (!author) {
@@ -68,6 +72,11 @@ export default async function Home({
           )}
         </div>
       </div>
+
+      <aside className="hidden w-72 shrink-0 space-y-6 lg:block">
+        <RightTrending items={trending} />
+        {/* <RightTopTags /> */}
+      </aside>
     </div>
   );
 }
