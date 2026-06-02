@@ -475,3 +475,28 @@ export async function getCommentTree(
   return nestCommentRows(enriched);                                         // Retorna el árbol jerárquico de comentarios
 }
 
+/**
+ * Esta función obtiene el conteo de posts por tag.
+ * @returns Array de objetos con el tag y su conteo.
+ * 
+ * Propósito:
+ * - Obtener todos los tags.
+ * - Obtener el conteo de posts por tag.
+ * - Retornar un array de objetos con el tag y su conteo.
+ */
+
+export async function tagPostCounts(): Promise<{ tag: Tag; count: number }[]> {
+  const allTags = await listTags();                                          // Se obtienen todos los tags
+  const rows = await prisma.postTag.groupBy({                                // Agrupa los resultados por tagSlug
+    by: ["tagSlug"],
+    _count: { _all: true },
+  });
+
+  const countMap = new Map(rows.map((r) => [r.tagSlug, r._count._all]));      // Crea un Map con el conteo de posts por tag
+
+  return allTags.map((tag) => ({                                              // Retorna un array de objetos con el tag y su conteo
+    tag,
+    count: countMap.get(tag.slug) ?? 0,
+  }));
+}
+
