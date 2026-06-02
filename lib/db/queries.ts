@@ -1,6 +1,7 @@
 import { PostModel } from "../generated/prisma/models";
 import { prisma } from "../prisma";
-import { FeedSort, Post, Tag, User, VoteTarget } from "../types";
+import { FeedSort, Post, Tag, User, VoteTarget, Comment } from "../types";
+import { EnrichedCommentNode, nestCommentRows } from "../comment-tree";
 
 export type FeedPostRow = {
   post: Post;
@@ -290,6 +291,7 @@ export async function getUserVote(
   return v === -1 || v === 1 ? v : 0;                                         // Se devuelve el valor del voto.
 }
 
+
 export async function getPostById(id: string): Promise<Post | undefined> {
   const row = await prisma.post.findUnique({ where: { id } });                // Se obtiene el post por su id.
   if (!row) return undefined;                                                 // Si no se encuentra el post, se devuelve undefined.
@@ -305,6 +307,7 @@ export async function getPostById(id: string): Promise<Post | undefined> {
     ccMap.get(id) ?? 0);                                                      // Se obtiene el numero de comentarios del post.
 }
 
+
 export async function getAuthorById(authorId: string): Promise<User> {
   const row = await prisma.userProfile.findUnique(                            // Se obtiene el perfil del usuario desde la tabla userProfile
     { where: { id: authorId } }                                               // Se busca por el id del autor.
@@ -312,5 +315,163 @@ export async function getAuthorById(authorId: string): Promise<User> {
   return row
     ? { id: row.id, username: row.username }                                  // Si se encuentra el perfil del usuario, se devuelve el objeto User.
     : { id: authorId, username: `user_${authorId.slice(0, 6)}` };             // Si no se encuentra el perfil del usuario, se devuelve un objeto User con el id del autor y un nombre de usuario generado aleatoriamente.
+}
+
+
+export async function getPostScore(postId: string): Promise<number> {
+  const agg = await prisma.vote.aggregate({                                   // Se calcula el puntaje de un post sumando los valores de todos los votos asociados a él.
+    where: { targetType: "post", targetId: postId },                          // Se especifica que solo se consideren los votos cuyo targetType sea "post" y targetId coincida con el postId proporcionado.
+    _sum: { value: true },                                                    // Se indica que se debe sumar el campo value de los votos.
+  });
+  return Number(agg._sum.value ?? 0);                                         // Se devuelve el puntaje del post.
+}
+
+export async function listCommentsForPost(postId: string): Promise<Comment[]> {
+  const rows = await prisma.comment.findMany({ where: { postId } });
+  return rows.map((c) => ({
+    id: c.id,
+    postId: c.postId,
+    authorId: c.authorId,
+    parentId: c.parentId,
+    body: c.body,
+    createdAt: c.createdAt.toISOString(),
+  }));
+}
+
+/**
+ * Esta función es un batch loader que optimiza la obtención de múltiples autores
+ * de comentarios, de una sola vez.
+ * @param authorIds - Array de ids de autores.
+ * @returns Map con los autores. <string, number>
+ */
+
+export async function batchAuthorsForIds(
+  authorIds: string[],
+): Promise<Map<string, User>> {
+  const unique = [...new Set(authorIds)];                                // Se elimina los elementos duplicados de la lista de autores
+  if (unique.length === 0) return new Map();                             // Si no hay autores, se devuelve un Map vacio.
+
+  const rows = await prisma.userProfile.findMany({                       // Se obtienen los perfiles de los usuarios desde la tabla userProfile
+    where: { id: { in: unique } },                                       // Se busca por el id del autor.
+  });
+
+  const result = new Map<string, User>();                                // Se crea un Map para almacenar los autores.
+
+  for (const row of rows) {                                              // Se itera sobre los resultados de la consulta (perfiles encontrados)
+    result.set(row.id, { id: row.id, username: row.username });          // Se agrega el autor al Map.
+  }
+
+  for (const id of unique) {                                             // Se itera sobre los autores que no se encontraron en la consulta
+    if (!result.has(id)) {                                               // Si no se encuentra el autor
+      result.set(id, { id, username: `user_${id.slice(0, 6)}` });        // Se agrega el autor al Map con un nombre de usuario generado aleatoriamente.
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Esta función calcula los scores totales de múltiples comentarios en una sola consulta,
+ * usando GROUP BY para sumar los votos de cada comentario.
+ * 
+ * @param commentIds - Array de ids de comentarios.
+ * @returns Map con el puntaje de los comentarios. <string, number>
+ */
+
+async function batchCommentScores(
+  commentIds: string[],
+): Promise<Map<string, number>> {
+  if (commentIds.length === 0) return new Map();                         // Si no hay IDs de comentarios, retorna un Map vacío inmediatamente.
+  const rows = await prisma.vote.groupBy({                               // Obtiene el puntaje de los comentarios.
+    by: ["targetId"],                                                       // Agrupa los resultados por ID de comentario
+    where: {                                                                // Filtra solo votos de tipo "comment" y solo los IDs solicitados
+      targetType: "comment",
+      targetId: { in: commentIds },
+    },
+    _sum: { value: true },                                                  // Calcula la suma del campo value (que es +1 para upvote, -1 para downvote)
+  });
+
+  const m = new Map<string, number>();                                   // Se crea un Map para almacenar los puntajes.
+  for (const r of rows) {                                                  // Se itera sobre los resultados de la consulta
+    m.set(r.targetId, Number(r._sum.value ?? 0));                          // Se agrega el puntaje al Map.
+  }
+  return m;                                                              // Se retorna el Map con los puntajes. <string, number>
+}
+
+/**
+ * Esta función obtiene los votos de múltiples comentarios en una sola consulta,
+ * para un usuario específico.
+ * @param userId - ID del usuario.
+ * @param commentIds - Array de IDs de comentarios.
+ * @returns Map con los votos del usuario. <string, -1 | 0 | 1>
+ */
+
+async function batchUserVotesForComments(
+  userId: string,
+  commentIds: string[],
+): Promise<Map<string, -1 | 0 | 1>> {
+  const m = new Map<string, -1 | 0 | 1>();                               // Se crea un Map para almacenar los votos. <string, -1 | 0 | 1>
+  if (commentIds.length === 0) return m;                                 // Si no hay IDs de comentarios, retorna un Map vacío inmediatamente.
+  const rows = await prisma.vote.findMany({                              // Se obtienen los votos de los comentarios.
+    where: {
+      userId,
+      targetType: "comment",
+      targetId: { in: commentIds },
+    },
+  });
+  for (const r of rows) {                                                // Se itera sobre los resultados de la consulta
+    const v = r.value;
+    m.set(r.targetId, v === -1 || v === 1 ? v : 0);                      // Se agrega el voto al Map.
+  }
+  return m;                                                              // Se retorna el Map con los votos. <string, -1 | 0 | 1>
+}
+
+
+
+/**
+ * Esta función construye un árbol jerárquico de comentarios a partir de una lista plana de comentarios.
+ * @param flat - Lista plana de comentarios.
+ * @returns Árbol jerárquico de comentarios.
+ * 
+ * Propósito:
+ * - Obtener todos los comentarios de un post con:
+ * - Información del autor (username)
+ * - Score total (suma de votos)
+ * - Voto del usuario actual (si está autenticado)
+ * - Estructura jerárquica (padre-hijo)
+ */
+
+export async function getCommentTree(
+  postId: string,
+  sessionUserId?: string,
+): Promise<EnrichedCommentNode[]> {
+
+  const flat = await listCommentsForPost(postId);                           // Obtiene todos los comentarios del post. Con esta lista flat...
+  if (flat.length === 0) return [];                                         // Si no hay comentarios, retorna un array vacío.
+  const authorIds = [...new Set(flat.map((c) => c.authorId))];              // Obtenemos los IDs únicos de los autores 
+  const authorMap = await batchAuthorsForIds(authorIds);                    // y con ellos los autores en un Map gracias a batAuthorsForIds
+
+  const commentIds = flat.map((c) => c.id);                                 // Tambien obtenemos los IDs de los comentarios.
+  const scoreMap = await batchCommentScores(commentIds);                    // Con ellos obtenemos el puntaje total de cada comentario
+
+  const voteMap = sessionUserId                                             // Solo si el usuario está autenticado
+    ? await batchUserVotesForComments(sessionUserId, commentIds)            // se obtiene los votos específicos del usuario actual para estos comentarios
+    : new Map<string, -1 | 0 | 1>();                                        // Si no hay sesión, retorna Map vacío (todos los votos son 0)
+
+  const enriched = flat                                                     // Se mapea sobre cada comentario plano
+    .map((c) => {
+      const author = authorMap.get(c.authorId);                             // Se obtiene el autor del comentario
+      if (!author) return null;                                             // Si no se encuentra el autor, se retorna null
+
+      return {                                                              // Se crea un objeto con el comentario enriquecido
+        ...c,                                                               // Agrega el objeto author completo 
+        author,                                                             // Agrega el author al objeto
+        score: scoreMap.get(c.id) ?? 0,                                     // Agrega el score del Map (o 0 si no tiene votos)
+        userVote: (voteMap.get(c.id) ?? 0) as -1 | 0 | 1,                   // Agrega el userVote del Map (o 0 si no votó)
+      };
+    })
+    .filter((x): x is NonNullable<typeof x> => x !== null);                 // Filtra los comentarios que no tienen autor
+
+  return nestCommentRows(enriched);                                         // Retorna el árbol jerárquico de comentarios
 }
 

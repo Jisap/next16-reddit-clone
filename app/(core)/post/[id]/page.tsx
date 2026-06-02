@@ -1,5 +1,5 @@
 import { getSessionUser } from '@/lib/auth';
-import { getAuthorById, getPostById } from '@/lib/db/queries';
+import { getAuthorById, getCommentTree, getPostById, getPostScore, getUserVote, listTags } from '@/lib/db/queries';
 import { formatRelativeTime } from '@/lib/format';
 import { UserAvatar } from '@neondatabase/auth/react';
 import { ArrowLeft } from 'lucide-react';
@@ -20,7 +20,16 @@ const PostPage = async ({
   const author = await getAuthorById(post.authorId);
   const sessionUser = await getSessionUser();
 
+  const score = await getPostScore(post.id);
+  const userVote = await getUserVote(sessionUser?.id, "post", post.id);
 
+  const tags = await listTags();
+  const primarySlug = post.tagSlugs[0];
+  const primaryTag = primarySlug
+    ? tags.find((t) => t.slug === primarySlug)
+    : undefined;
+
+  const commentTree = await getCommentTree(post.id, sessionUser?.id);
 
   return (
     <div className='flex gap-8'>
