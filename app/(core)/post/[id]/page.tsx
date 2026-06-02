@@ -1,8 +1,11 @@
+import { VoteButtons } from '@/components/Feed/vote-buttons';
+import { Separator } from '@/components/ui/separator';
 import { getSessionUser } from '@/lib/auth';
 import { getAuthorById, getCommentTree, getPostById, getPostScore, getUserVote, listTags } from '@/lib/db/queries';
 import { formatRelativeTime } from '@/lib/format';
+import { cn } from '@/lib/utils';
 import { UserAvatar } from '@neondatabase/auth/react';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, MessageSquare, Share2 } from 'lucide-react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import React from 'react'
@@ -53,7 +56,82 @@ const PostPage = async ({
           <h1 className="text-balance text-2xl font-bold leading-tight text-foreground md:text-3xl">
             {post.title}
           </h1>
+
+          {primaryTag ? (
+            <div className="mt-3">
+              <Link
+                href={`/?tag=${encodeURIComponent(primaryTag.slug)}`}
+                className={cn(
+                  "inline-flex rounded-md px-2 py-0.5 text-sm font-medium",
+                  "bg-tag-bg text-tag-text",
+                )}
+              >
+                #{primaryTag.label}
+              </Link>
+            </div>
+          ) : null}
+
+          <div className="mt-6 whitespace-pre-wrap text-base leading-relaxed text-muted-foreground">
+            {post.body}
+          </div>
+
+          <Separator className="my-6" />
+
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex items-center gap-3">
+              <VoteButtons
+                target="post"
+                targetId={post.id}
+                score={score}
+                userVote={userVote}
+              />
+
+              <span className="inline-flex items-center gap-1 text-sm text-muted-foreground">
+                <MessageSquare className="size-4" />
+                {post.commentCount} Comments
+              </span>
+            </div>
+
+            <button
+              type="button"
+              className="inline-flex items-center gap-1 hover:text-foreground"
+            >
+              <Share2 className="size-4" />
+              Share
+            </button>
+          </div>
         </article>
+
+        <section className="mt-8 rounded-xl border border-border bg-card p-4 md:p-6">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-lg font-semibold">
+              {post.commentCount} Comments
+            </h2>
+          </div>
+          {sessionUser ? (
+            <div className="mb-8">
+              {/* <CommentComposer postId={post.id} user={sessionUser} /> */}
+              CommentComposer
+            </div>
+          ) : (
+            <p className="mb-8 rounded-lg border border-dashed border-border bg-muted/30 p-4 text-sm text-muted-foreground">
+              <Link
+                href="/auth/sign-in"
+                className="font-medium text-primary hover:underline"
+              >
+                Log in
+              </Link>{" "}
+              to join the discussion.
+            </p>
+          )}
+
+          CommentTree
+          {/* <CommentThread
+            tree={commentTree}
+            postAuthorId={post.authorId}
+            sessionUser={sessionUser}
+          /> */}
+        </section>
       </div>
     </div>
   )
